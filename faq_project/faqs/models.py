@@ -1,5 +1,5 @@
-# models.py
 from django.db import models
+from django.core.cache import cache
 
 class FAQ(models.Model):
     question = models.CharField(max_length=200)
@@ -11,9 +11,20 @@ class FAQ(models.Model):
         return self.question
     
     def get_translated_faq(self, lang='en'):
+        """Retrieve translated FAQ with caching support."""
+        cache_key = f"faq_{self.id}_lang_{lang}"  
+
+        cached_translation = cache.get(cache_key)
+        if cached_translation:
+            return cached_translation
+
         if lang == 'hi':
-            return {"question": self.question_hi or self.question, "answer": self.answer}
+            translation = {"question": self.question_hi or self.question, "answer": self.answer}
         elif lang == 'bn':
-            return {"question": self.question_bn or self.question, "answer": self.answer}
+            translation = {"question": self.question_bn or self.question, "answer": self.answer}
         else:
-            return {"question": self.question, "answer": self.answer}
+            translation = {"question": self.question, "answer": self.answer}
+
+        cache.set(cache_key, translation, timeout=3600)
+
+        return translation
